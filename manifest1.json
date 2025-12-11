@@ -1,0 +1,12 @@
+{
+  "name": "ESP32_rc_car_by_serial",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "ESP32_rc_car_by_serial_firmware.bin", "offset": 0 }
+      ]
+    }
+  ]
+}

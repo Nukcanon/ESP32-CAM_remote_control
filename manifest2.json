@@ -1,0 +1,12 @@
+{
+  "name": "ESP32_video_streaming_by_web",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        { "path": "ESP32_video_streaming_by_web_firmware.bin", "offset": 0 }
+      ]
+    }
+  ]
+}
