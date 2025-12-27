@@ -61,7 +61,7 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
-    input.trim(); // 앞뒤 공백 제거
+    input.trim();
     String lowerInput = input;
     lowerInput.toLowerCase();
 
@@ -135,7 +135,6 @@ void loop() {
 
   // 2. ESP32-CAM 주행 명령 처리
   if (Serial1.available()) {
-    // 줄바꿈 문자까지 읽어옴 (예: "F", "F,500")
     String input = Serial1.readStringUntil('\n'); 
     input.trim(); // 공백 제거
 

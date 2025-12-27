@@ -22,8 +22,8 @@
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
 
-#define COMM_TX_PIN 13  // 데이터 전송용
-#define COMM_RX_PIN 14  // 데이터 전송용
+#define COMM_TX_PIN 13  // 데이터 전송
+#define COMM_RX_PIN 14  // 데이터 전송
 
 Preferences preferences;
 httpd_handle_t camera_httpd = NULL;
@@ -37,7 +37,6 @@ String getMacSSID() {
   WiFi.mode(WIFI_AP); 
   String mac = WiFi.macAddress();
   mac.replace(":", ""); 
-  // 뒤에서 4글자 추출
   String suffix = mac.substring(mac.length() - 4);
   return "ESP32-CAM_" + suffix;
 }
@@ -83,20 +82,18 @@ const char PROGMEM INDEX_HTML[] = R"rawliteral(
   <script>
     document.getElementById("photo").src = window.location.href.slice(0, -1) + ":81/stream";
     
-    var intervalId; // 반복 전송을 위한 타이머 ID
+    var intervalId; // 반복 전송을 위한 타이머
 
-    // [누를 때] 0.2초마다 명령을 계속 보냄
     function startMove(action) {
-      if(intervalId) clearInterval(intervalId); // 혹시 모를 중복 방지
+      if(intervalId) clearInterval(intervalId);
       move(action); // 누르자마자 즉시 1회 전송
       intervalId = setInterval(function(){ 
         move(action); 
       }, 200); // 이후 200ms(0.2초) 마다 반복 전송
     }
 
-    // [뗄 때] 반복 중단하고 정지 신호 보냄
     function stopMove() {
-      if(intervalId) clearInterval(intervalId); // 반복 종료
+      if(intervalId) clearInterval(intervalId);
       move('stop'); // 정지 명령 전송
     }
 
@@ -218,7 +215,7 @@ void configWiFi() {
   Serial.println(mode);
 
   if(mode == 1) {
-    // 공유기 연결 모드
+    // Station 모드
     Serial.println("\n[Mode 1] Router Settings");
     Serial.println("Input Router SSID: ");
     while (Serial.available() == 0) delay(10);
