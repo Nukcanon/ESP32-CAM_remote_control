@@ -55,7 +55,7 @@ void configWiFi() {
   if(mode == 1) {
     // [모드 1] 공유기 연결
     Serial.println("\n[Mode 1] Connect to Router");
-    Serial.print("Input Router SSID > ");
+    Serial.println("Input Router SSID > ");
     while (Serial.available() == 0) delay(10);
     ssid = Serial.readStringUntil('\n'); ssid.trim();
     Serial.println(ssid);
@@ -63,12 +63,14 @@ void configWiFi() {
     // [모드 2] AP 모드 (자동 생성)
     Serial.println("\n[Mode 2] Create Access Point");
     ssid = getMacSSID();
-    Serial.print("Auto-Generated SSID: ");
+    Serial.print("SSID: ");
     Serial.println(ssid);
   }
 
-  Serial.print("Input Password (min 8 chars) > ");
-  while (Serial.available() == 0) delay(10);
+  Serial.println("Input Password (min 8 chars) > ");
+  Serial.flush();
+
+  while (Serial.available() == 0) delay(100);
   password = Serial.readStringUntil('\n'); password.trim();
   Serial.println(password);
 
@@ -85,7 +87,7 @@ void configWiFi() {
 }
 
 void setup() {
-  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Brown-out detector 끄기
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
   
   // 자동차(ESP32)와 통신하기 위한 Serial1 시작
@@ -95,7 +97,7 @@ void setup() {
 
   // 1. 카메라 초기화
   Serial.print("Initializing Camera... ");
-  // QQVGA, QVGA, VGA 등 해상도 선택 가능 (전송 속도 고려하여 QVGA 추천)
+  // QQVGA, QVGA, VGA 등 해상도 선택
   if (camera.begin(FRAMESIZE_QVGA, PIXFORMAT_JPEG)) {
     Serial.println("OK!");
   } else {
@@ -181,7 +183,6 @@ void loop() {
 
       if(client.available()) {
         char cmd = client.read();
-        // 파이썬 코드에서 12를 보내면 프레임 전송
         if(cmd == 12) {
           client.write((const uint8_t *)&fb->len, sizeof(fb->len));
           client.write((const uint8_t *)fb->buf, fb->len);
@@ -192,20 +193,22 @@ void loop() {
   }
 }
 
-// 모터 제어 명령 처리 태스크 (Port 81)
-// WiFi로 받은 명령(F, B, L, R, S)을 Serial1을 통해 자동차(ESP32)로 전달
+// 모터 제어 명령 처리 태스크
 void motorTask(void * parameter) {
   for(;;) {
     WiFiClient client = motServer.available();
     if (client) {
-      // 반응 속도 향상을 위해 NoDelay 설정
       client.setNoDelay(true);
-      
       while (client.connected()) {
         if(client.available()) {
-          char cmd = client.read();
-          // 받은 명령을 그대로 ESP32(자동차)로 토스
-          Serial1.print(cmd); 
+          // '\n' (줄바꿈)이 나올 때까지 데이터를 읽어서 한 번에 전송
+          String cmdStr = client.readStringUntil('\n');
+          cmdStr.trim(); // 공백 제거
+
+          if (cmdStr.length() > 0) {
+            Serial1.println(cmdStr);
+            // Serial.println("To Car: " + cmdStr); 
+          }
         }
       }
     }
