@@ -34,7 +34,7 @@ int wifiMode = 1;
 
 // MAC 주소 기반 SSID 생성
 String getMacSSID() {
-  WiFi.mode(WIFI_AP); // MAC 주소를 읽기 위해 AP 모드 활성화
+  WiFi.mode(WIFI_AP); 
   String mac = WiFi.macAddress();
   mac.replace(":", ""); 
   // 뒤에서 4글자 추출
@@ -157,22 +157,20 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
   if (strlen(variable) > 0) {
     Serial.print("Action: ");
     Serial.println(variable);
-
-    // [변경 핵심] DigitalWrite 대신 Serial1.print로 명령 문자 전송
     if(!strcmp(variable, "fwd")) { 
-      Serial1.print('F'); // Forward
+      Serial1.println("F"); // 전진
     }
     else if(!strcmp(variable, "back")) { 
-      Serial1.print('B'); // Backward (추가됨)
+      Serial1.println("B"); // 후진
     }
     else if(!strcmp(variable, "left")) { 
-      Serial1.print('L'); // Left
+      Serial1.println("L"); // 좌회전
     }
     else if(!strcmp(variable, "right")) { 
-      Serial1.print('R'); // Right
+      Serial1.println("R"); // 우회전
     }
     else if(!strcmp(variable, "stop")) { 
-      Serial1.print('S'); // Stop
+      Serial1.println("S"); // 정지
     }
   }
   
@@ -201,7 +199,7 @@ void startCameraServer() {
   }
 }
 
-// WiFi 설정 (자동 SSID 생성 적용)
+// WiFi 설정
 void configWiFi() {
   Serial.println("\n--------------------------------");
   Serial.println("      WiFi Configuration        ");
@@ -213,6 +211,7 @@ void configWiFi() {
 
   while (Serial.available() == 0) delay(10);
   int mode = Serial.parseInt();
+  delay(100);
   while(Serial.available()) Serial.read(); 
   
   if(mode != 1 && mode != 2) mode = 1;
@@ -221,21 +220,24 @@ void configWiFi() {
   if(mode == 1) {
     // 공유기 연결 모드
     Serial.println("\n[Mode 1] Router Settings");
-    Serial.print("Input SSID: ");
+    Serial.println("Input Router SSID: ");
     while (Serial.available() == 0) delay(10);
     ssid = Serial.readStringUntil('\n'); ssid.trim();
     Serial.println(ssid);
   } else {
     // AP 모드
     Serial.println("\n[Mode 2] AP(Hotspot) Settings");
-    ssid = getMacSSID(); // SSID 자동 생성
-    Serial.print("Auto-Generated SSID: ");
+    ssid = getMacSSID();
+    Serial.print("SSID: ");
     Serial.println(ssid);
   }
 
-  Serial.print("Input Password (min 8 chars): ");
-  while (Serial.available() == 0) delay(10);
-  password = Serial.readStringUntil('\n'); password.trim();
+  Serial.println("Input Password (min 8 chars): ");
+  Serial.flush();
+
+  while (Serial.available() == 0) delay(100);
+  password = Serial.readStringUntil('\n');
+  password.trim();
   Serial.println(password);
 
   preferences.begin("wifi-config", false);
