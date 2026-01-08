@@ -47,7 +47,7 @@ void goForward(long spd) {
   spdR += SPEED_MIN; if(spdR > SPEED_MAX) spdR = SPEED_MAX;
   spdL += SPEED_MIN; if(spdL > SPEED_MAX) spdL = SPEED_MAX;
 
-  // 오른쪽 바퀴 (채널 0, 1) [cite: 7]
+  // 오른쪽 바퀴 (채널 0, 1)
   ledcWrite(mot_channels[0], SPEED_MAX);       
   ledcWrite(mot_channels[1], SPEED_MAX - spdR);
   
@@ -67,7 +67,7 @@ void goBackward(long spd) {
   spdR += SPEED_MIN; if(spdR > SPEED_MAX) spdR = SPEED_MAX;
   spdL += SPEED_MIN; if(spdL > SPEED_MAX) spdL = SPEED_MAX;
 
-  // 오른쪽 바퀴 후진 [cite: 10]
+  // 오른쪽 바퀴 후진
   ledcWrite(mot_channels[0], SPEED_MAX - spdR);
   ledcWrite(mot_channels[1], SPEED_MAX);
   
@@ -109,4 +109,5 @@ void turnRight(long spd) {
   // 왼쪽 전진
   ledcWrite(mot_channels[2], SPEED_MAX);
   ledcWrite(mot_channels[3], SPEED_MAX - spd);
+
 }
