@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include "soc/soc.h"           
 #include "soc/rtc_cntl_reg.h"  
+
 // 핀 정의 (AI-Thinker)
 #define PWDN_GPIO_NUM     32
 #define RESET_GPIO_NUM    -1
@@ -35,13 +36,14 @@ int wifiMode = 1;
 // MAC 주소 기반 SSID 생성
 String getMacSSID() {
   WiFi.mode(WIFI_AP); 
-  String mac = WiFi.macAddress();
+  // 수정된 부분: AP 모드의 MAC 주소를 가져옵니다.
+  String mac = WiFi.softAPmacAddress(); 
   mac.replace(":", ""); 
   String suffix = mac.substring(mac.length() - 4);
   return "ESP32-CAM_" + suffix;
 }
 
-// 조이스틱 웹페이지
+// 조이스틱 및 설정 웹페이지
 const char PROGMEM INDEX_HTML[] = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
@@ -50,7 +52,8 @@ const char PROGMEM INDEX_HTML[] = R"rawliteral(
   <style>
     body { font-family: Arial; text-align: center; margin:0px; padding:0px; background-color: #222; color: white; }
     h2 { margin: 10px; }
-    img { width: 100%; max-width: 400px; transform: rotate(180deg); }
+    /* 기존의 transform: rotate(180deg); 제거 (하드웨어 제어로 대체) */
+    img { width: 100%; max-width: 400px; } 
     .button-group { display: flex; justify-content: center; gap: 20px; }
     .btn { 
       width: 80px; height: 80px; 
@@ -59,11 +62,20 @@ const char PROGMEM INDEX_HTML[] = R"rawliteral(
       touch-action: manipulation; -webkit-user-select: none;
     }
     .btn:active { background-color: #ff3333; }
+    .settings { margin-top: 15px; font-size: 18px; }
+    .settings label { margin: 0 10px; cursor: pointer; }
+    .settings input { transform: scale(1.5); margin-right: 5px; }
   </style>
 </head>
 <body>
   <h2>ESP32 RC CAR</h2>
   <img src="" id="photo" >
+  
+  <!-- 반전 체크박스 추가 -->
+  <div class="settings">
+    <label><input type="checkbox" id="vflip" onchange="setFlip('vflip', this.checked)" checked>상하 반전</label>
+    <label><input type="checkbox" id="hmirror" onchange="setFlip('hmirror', this.checked)" checked>좌우 반전</label>
+  </div>
   
   <div style="margin-top:20px;">
     <button class="btn" ontouchstart="startMove('fwd')" ontouchend="stopMove()" onmousedown="startMove('fwd')" onmouseup="stopMove()">▲</button>
@@ -83,6 +95,14 @@ const char PROGMEM INDEX_HTML[] = R"rawliteral(
     document.getElementById("photo").src = window.location.href.slice(0, -1) + ":81/stream";
     
     var intervalId; // 반복 전송을 위한 타이머
+
+    // 카메라 반전 설정 API 호출 함수 추가
+    function setFlip(varName, isChecked) {
+      var val = isChecked ? 1 : 0;
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/setting?var=" + varName + "&val=" + val, true);
+      xhr.send();
+    }
 
     function startMove(action) {
       if(intervalId) clearInterval(intervalId);
@@ -175,16 +195,48 @@ static esp_err_t cmd_handler(httpd_req_t *req) {
   return httpd_resp_send(req, NULL, 0);
 }
 
+// 반전 설정 핸들러 추가
+static esp_err_t setting_handler(httpd_req_t *req) {
+  char* buf;
+  size_t buf_len = httpd_req_get_url_query_len(req) + 1;
+  char variable[32] = {0,};
+  char value[10] = {0,};
+
+  if (buf_len > 1) {
+    buf = (char*)malloc(buf_len);
+    if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
+      httpd_query_key_value(buf, "var", variable, sizeof(variable));
+      httpd_query_key_value(buf, "val", value, sizeof(value));
+    }
+    free(buf);
+  }
+
+  int val = atoi(value);
+  sensor_t * s = esp_camera_sensor_get();
+  
+  if(!strcmp(variable, "vflip")) {
+    s->set_vflip(s, val);
+  }
+  else if(!strcmp(variable, "hmirror")) {
+    s->set_hmirror(s, val);
+  }
+
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, NULL, 0);
+}
+
 void startCameraServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.server_port = 80;
 
   httpd_uri_t index_uri = { .uri = "/", .method = HTTP_GET, .handler = index_handler, .user_ctx = NULL };
   httpd_uri_t cmd_uri = { .uri = "/action", .method = HTTP_GET, .handler = cmd_handler, .user_ctx = NULL };
+  httpd_uri_t setting_uri = { .uri = "/setting", .method = HTTP_GET, .handler = setting_handler, .user_ctx = NULL }; // 설정 URI 추가
 
   if (httpd_start(&camera_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(camera_httpd, &index_uri);
     httpd_register_uri_handler(camera_httpd, &cmd_uri);
+    httpd_register_uri_handler(camera_httpd, &setting_uri); // 설정 핸들러 등록
   }
 
   config.server_port = 81;
@@ -323,7 +375,8 @@ void setup() {
   esp_camera_init(&config);
   
   sensor_t * s = esp_camera_sensor_get();
-  //s->set_vflip(s, 1);
+  // 웹에서 체크박스로 제어하기 위해 초기 상태는 기본(1)으로 둡니다.
+  s->set_vflip(s, 1);
   s->set_hmirror(s, 1);
 
   startCameraServer();
